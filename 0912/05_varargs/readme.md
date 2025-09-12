@@ -2,13 +2,11 @@
 # 가변 인수 (Variable Arguments)
 
 
-핵심 요약
+##핵심 요약
 
-...을 사용하면 인자 개수를 유동적으로 받을 수 있음
-
-<stdarg.h> + va_list + va_start / va_arg / va_end 필수
-
-printf, scanf 같은 표준 함수도 이 원리 기반으로 구현
+- ...을 사용하면 인자 개수를 유동적으로 받을 수 있음
+- <stdarg.h> + va_list + va_start / va_arg / va_end 필수
+- printf, scanf 같은 표준 함수도 이 원리 기반으로 구현
 
 ## 개념 정리
 - **가변 인수 함수**: 호출 시 인자의 개수가 고정되지 않고 달라질 수 있는 함수  
