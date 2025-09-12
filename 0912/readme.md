@@ -31,7 +31,7 @@ gcc -O2 -Wall src/01_console/gotoxy_example.c -o bin/gotoxy_example.exe
 
 > **주의**: `conio.h`, `windows.h`는 Windows 전용입니다. WSL·Linux·macOS에서는 동작하지 않습니다.
 
-## 포함 개념 요약a
+## 포함 개념 요약
 - 콘솔 커서 이동과 화면 지우기, 입력 버퍼 처리
 - 아스키 코드 vs 스캔 코드, 화살표 이동
 - 텍스트 모드 사각형 그리기
