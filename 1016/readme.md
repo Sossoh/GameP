@@ -1,4 +1,5 @@
-{{ #include <stdio.h>
+```
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <windows.h>
@@ -122,4 +123,5 @@ void draw_rectangle(int c, int r)
     printf("%c%c", a, b[5]);
     printf("\n");
 }
-}}
+
+```
