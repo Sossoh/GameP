@@ -7,7 +7,6 @@
 #include <time.h>
 
 // 함수 선언
-void moving_character_signboard(char ch01[], int line_length);
 void gotoxy(int x, int y);
 void draw_rectangle_movable(int x, int y, int c, int r);
 void show_intro();
@@ -18,33 +17,32 @@ void play_finish_bgm();
 void play_ending_bgm();
 void set_console_font();
 void show_ending(int score);
-void show_rhythm_game(int* score);
+void moving_signboard_game(char ch01[], int line_length);
 
 // 메인 함수
 int main(void)
 {
+    // 콘솔 기본 설정
     set_console_font();
     SetConsoleOutputCP(65001);
     SetConsoleCP(65001);
     system("chcp 65001 > nul");
 
-    show_intro();
+    SetConsoleTitle(L"🎮 Moving Billboard Ball Game 🎮");
+    show_intro(); // 인트로 화면
 
-    char ch01[20];
+    char ch01[50];
     int line_length;
-    int score = 0;
 
-    printf("Moving Text Billboard\n\n");
-    printf("Enter the file name that contains the ad text:\n");
-    printf("Input and press Enter> ");
+    printf("Moving Billboard Ball Game\n\n");
+    printf("Enter the file name containing text:\n");
+    printf("Input> ");
     scanf("%s", ch01);
-    printf("Enter the number of characters to display on the board:\n");
-    printf("Input and press Enter> ");
+    printf("Enter the number of characters to display:\n");
+    printf("Input> ");
     scanf("%d", &line_length);
 
-    moving_character_signboard(ch01, line_length);
-    show_rhythm_game(&score);
-    show_ending(score);
+    moving_signboard_game(ch01, line_length); // 본 게임 실행
     return 0;
 }
 
@@ -79,18 +77,20 @@ void show_intro()
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     const int colors[] = { 9, 10, 11, 13, 14, 12 };
 
+    // 깜빡이는 인트로 타이틀
     play_intro_bgm();
     for (int i = 0; i < 6; i++)
     {
         SetConsoleTextAttribute(hConsole, colors[i]);
-        gotoxy(18, 8);
-        printf("🎶  M O V I N G   T E X T   B I L L B O A R D  🎶");
+        gotoxy(15, 8);
+        printf("🎶  M O V I N G   B I L L B O A R D   G A M E  🎶");
         Sleep(180);
-        gotoxy(18, 8);
-        printf("                                                   ");
+        gotoxy(15, 8);
+        printf("                                                 ");
         Sleep(60);
     }
 
+    // 제작자 표시 + 로딩 애니메이션
     SetConsoleTextAttribute(hConsole, 15);
     gotoxy(25, 10);
     print_slow("Created by soheE\n", 40);
@@ -111,6 +111,7 @@ void show_intro()
     SetConsoleTextAttribute(hConsole, 15);
 }
 
+// 🎵 간단한 효과음 함수들
 void play_intro_bgm()
 {
     int tones[] = { 262, 330, 392, 523 };
@@ -154,78 +155,130 @@ void play_ending_bgm()
 }
 
 // -----------------------------------------------
-// 🎮 광고판 (박스 + 텍스트 같이 이동 + 4방향 이동)
+// 🎮 전광판 + 공 튕기기 게임 (잔상 제거 + 타이머)
 // -----------------------------------------------
-void moving_character_signboard(char ch01[], int line_length)
+void moving_signboard_game(char ch01[], int line_length)
 {
-    char chr[121];
-    int length;
-    int x = 3, y = 8; // 박스 시작 좌표
+    system("cls");
+    srand((unsigned)time(NULL));
+
+    // 광고 문구 불러오기 (없으면 기본 "WELCOME")
     FILE* fp = fopen(ch01, "r");
-    if (!fp) { printf("File open error!"); exit(1); }
+    char chr[121] = "WELCOME";
+    if (fp) {
+        fgets(chr, 120, fp);
+        fclose(fp);
+    }
 
-    fgets(chr, 120, fp);
-    fclose(fp);
-    length = strlen(chr);
+    // 기본 변수 설정
+    int boardWidth = strlen(chr) + 2;
+    int x = 35, y = 20;              // 전광판 좌표
+    int ballX = 40, ballY = 5;       // 공 좌표
+    int dirX = 1, dirY = 1;          // 공 이동 방향
+    int score = 0;
+    int tick = 0;
+    int prevX = x, prevY = y;        // 이전 전광판 위치 (잔상 제거용)
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(hConsole, 15);
 
-    int paused = 0;
-    int prevX = x, prevY = y;
+    // 시간 측정용
+    time_t start = time(NULL);
+    time_t now;
+    double elapsed;
 
-    // 초기 박스 출력
-    int boxWidth = strlen(chr) + 2;
-    draw_rectangle_movable(x, y, boxWidth, 1);
-    gotoxy(x + (boxWidth - (int)strlen(chr)) / 2 + 1, y + 1);
-    printf("%s", chr);
+    // 상단 안내 문구
+    gotoxy(28, 2);
+    printf("==== MOVING BILLBOARD BALL GAME ====");
+    gotoxy(25, 4);
+    printf("← → : Move | ESC : Quit");
+    gotoxy(25, 5);
+    printf("Catch the ball with the billboard!");
 
     while (1)
     {
-        if (_kbhit()) {
-            char key = _getch();
-            if (key == 27) break; // ESC 종료
-            if (key == ' ') {     // 일시정지
-                paused = !paused;
-                gotoxy(0, 20);
-                if (paused) printf("[PAUSED] Press SPACE to resume...");
-                else printf("                                       ");
-            }
-        }
-        if (paused) continue;
+        tick++;
+        now = time(NULL);
+        elapsed = difftime(now, start);
 
-        // 이동 처리 (4방향)
+        // ===== 입력 처리 (즉시 반응) =====
         if (GetAsyncKeyState(VK_LEFT))  x--;
         if (GetAsyncKeyState(VK_RIGHT)) x++;
-        if (GetAsyncKeyState(VK_UP))    y--;
-        if (GetAsyncKeyState(VK_DOWN))  y++;
-
-        // 콘솔 경계 제한
         if (x < 1) x = 1;
-        if (y < 1) y = 1;
-        if (x > 80 - boxWidth) x = 80 - boxWidth;
-        if (y > 22) y = 22;
+        if (x > 80 - boardWidth) x = 80 - boardWidth;
 
-        // 이전 위치와 다를 때만 화면 갱신
+        // ===== 이전 전광판 지우기 (잔상 제거) =====
         if (x != prevX || y != prevY) {
-            // 이전 위치 지우기
-            for (int i = 0; i < 5; i++) {
-                gotoxy(1, prevY + i);
-                printf("                                                                 ");
+            for (int i = 0; i < 3; i++) {
+                gotoxy(prevX, prevY + i);
+                printf("%-*s", boardWidth + 4, " "); // 공백으로 덮어쓰기
             }
-
-            // 새 위치 박스 + 텍스트 출력
-            draw_rectangle_movable(x, y, boxWidth, 1);
-            int textX = x + (boxWidth - (int)strlen(chr)) / 2 + 1;
-            gotoxy(textX, y + 1);
-            printf("%s", chr);
-
-            prevX = x;
-            prevY = y;
         }
 
-        Sleep(50);
+        // ===== 공 이동 (5틱마다 1칸) =====
+        if (tick % 5 == 0)
+        {
+            gotoxy(ballX, ballY);
+            printf(" ");
+            ballX += dirX;
+            ballY += dirY;
+
+            // 벽 충돌 시 반사
+            if (ballX <= 2 || ballX >= 78) dirX = -dirX;
+            if (ballY <= 2) dirY = -dirY;
+        }
+
+        // ===== 전광판 출력 =====
+        draw_rectangle_movable(x, y, boardWidth, 1);
+        gotoxy(x + 1, y + 1);
+        printf("%s", chr);
+
+        // ===== 공 출력 =====
+        gotoxy(ballX, ballY);
+        printf("O");
+
+        // ===== 충돌 판정 =====
+        if (ballY == y && ballX >= x && ballX <= x + boardWidth)
+        {
+            dirY = -dirY;
+            score++;
+            Beep(700, 50);
+        }
+
+        // ===== 바닥 닿으면 종료 =====
+        if (ballY > y + 2)
+        {
+            gotoxy(35, 10);
+            printf("💥 GAME OVER 💥");
+            Beep(300, 500);
+            break;
+        }
+
+        // ===== ESC 누르면 즉시 종료 =====
+        if (GetAsyncKeyState(VK_ESCAPE))
+        {
+            gotoxy(35, 10);
+            printf("💫 EXIT 💫");
+            break;
+        }
+
+        // ===== 상단 HUD 표시 (점수 + 시간) =====
+        gotoxy(5, 1);
+        printf("Score: %d   Time: %.0f sec   ", score, elapsed);
+
+        // 현재 위치를 이전 위치로 저장
+        prevX = x; prevY = y;
+
+        Sleep(20); // 루프 딜레이 (입력 반응속도)
     }
+
+    Sleep(1500);
+
+    gotoxy(30, 13);
+    printf("Your Play Time: %.0f seconds", elapsed);
+    Sleep(1500);
 }
 
-// ✅ 이동 가능한 테두리
+// ✅ 전광판 그리기 함수
 void draw_rectangle_movable(int x, int y, int c, int r)
 {
     int i, j;
@@ -249,83 +302,6 @@ void draw_rectangle_movable(int x, int y, int c, int r)
 }
 
 // -----------------------------------------------
-// 🥁 리듬 미니게임
-// -----------------------------------------------
-void show_rhythm_game(int* score)
-{
-    system("cls");
-    srand((unsigned)time(NULL));
-    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-
-    *score = 0;
-    gotoxy(30, 3);
-    printf("==== RHYTHM MODE ====\n");
-    gotoxy(25, 5);
-    printf("Press ENTER when the 'O' hits the line!");
-    gotoxy(40, 14);
-    printf("---------------------- [JUDGE LINE] ----------------------");
-
-    for (int round = 1; round <= 10; round++)
-    {
-        int posX = 48;
-        int posY = 5;
-        int targetY = 13;
-        int hit = 0;
-        int timing = 0;
-
-        for (posY = 5; posY <= targetY; posY++)
-        {
-            gotoxy(posX, posY);
-            printf("O");
-            Sleep(100);
-            gotoxy(posX, posY);
-            printf(" ");
-
-            if (_kbhit()) {
-                char key = _getch();
-                if (key == 13) {
-                    timing = abs(targetY - posY);
-                    if (timing == 0) {
-                        gotoxy(45, 16);
-                        printf("PERFECT! +10");
-                        Beep(880, 100);
-                        *score += 10;
-                    }
-                    else if (timing <= 1) {
-                        gotoxy(45, 16);
-                        printf("GOOD! +7");
-                        Beep(700, 80);
-                        *score += 7;
-                    }
-                    else {
-                        gotoxy(45, 16);
-                        printf("MISS!");
-                        Beep(300, 80);
-                    }
-                    hit = 1;
-                    break;
-                }
-            }
-        }
-
-        if (!hit) {
-            gotoxy(45, 16);
-            printf("MISS!");
-            Beep(300, 100);
-        }
-
-        Sleep(500);
-        gotoxy(45, 16);
-        printf("                ");
-    }
-
-    gotoxy(42, 18);
-    printf("Your Score: %d / 100", *score);
-    Beep(600, 300);
-    Sleep(1200);
-}
-
-// -----------------------------------------------
 // 🎬 엔딩 화면
 // -----------------------------------------------
 void show_ending(int score)
@@ -334,6 +310,7 @@ void show_ending(int score)
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     const int colors[] = { 14, 13, 12, 11, 10, 9 };
 
+    // 컬러 깜빡이는 엔딩 텍스트
     for (int i = 0; i < 6; i++)
     {
         SetConsoleTextAttribute(hConsole, colors[i]);
@@ -344,6 +321,7 @@ void show_ending(int score)
 
     play_ending_bgm();
 
+    // 깜빡이는 엔딩 연출
     for (int i = 0; i < 3; i++)
     {
         gotoxy(30, 10);
@@ -356,8 +334,6 @@ void show_ending(int score)
 
     SetConsoleTextAttribute(hConsole, 15);
     gotoxy(28, 12);
-    printf("Your Final Score: %d / 100", score);
-    gotoxy(25, 14);
     printf("Press any key to exit...");
     _getch();
 }
