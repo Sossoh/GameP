@@ -2,7 +2,6 @@
 
 # Unity
 
-- 장애물 런
 
 <img width="1059" height="515" alt="image" src="https://github.com/user-attachments/assets/cf82f2bb-427b-4ee5-a3db-c2264a7f8587" />
 
